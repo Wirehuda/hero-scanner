@@ -2,372 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>QR Scanner</title>
-  <!-- Telegram Web App SDK — must be first -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>HeRo Scanner</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- jsQR — decodes QR from canvas pixel data -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: #000;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+      background-color: var(--tg-theme-bg-color, #000000);
+      color: var(--tg-theme-text-color, #ffffff);
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      touch-action: none;
-    }
-
-    /* ── Live camera feed ─────────────────────────────── */
-    #video {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    /* hidden — only used for pixel analysis */
-    #canvas { display: none; }
-
-    /* ── Dark vignette masks around the viewfinder ───── */
-    .mask {
-      position: absolute;
-      background: rgba(0, 0, 0, 0.55);
-    }
-    .mask-top    { top: 0; left: 0; right: 0; height: calc(50% - 135px); }
-    .mask-bottom { bottom: 0; left: 0; right: 0; height: calc(50% - 135px); }
-    .mask-left   { top: calc(50% - 135px); left: 0; width: calc(50% - 135px); height: 270px; }
-    .mask-right  { top: calc(50% - 135px); right: 0; width: calc(50% - 135px); height: 270px; }
-
-    /* ── Viewfinder box ───────────────────────────────── */
-    #viewfinder {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 270px;
-      height: 270px;
-    }
-
-    /* Corner brackets */
-    .c {
-      position: absolute;
-      width: 32px;
-      height: 32px;
-      border: 3.5px solid #fff;
-      border-radius: 3px;
-      transition: border-color 0.25s;
-    }
-    .c-tl { top: 0;  left: 0;  border-right: none; border-bottom: none; }
-    .c-tr { top: 0;  right: 0; border-left: none;  border-bottom: none; }
-    .c-bl { bottom: 0; left: 0;  border-right: none; border-top: none; }
-    .c-br { bottom: 0; right: 0; border-left: none;  border-top: none; }
-
-    #viewfinder.detected .c { border-color: #4cd964; }
-
-    /* Animated scan line */
-    #scan-line {
-      position: absolute;
-      left: 6px;
-      right: 6px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent 0%, #4cd964 50%, transparent 100%);
-      border-radius: 1px;
-      animation: sweep 1.8s ease-in-out infinite;
-    }
-    @keyframes sweep {
-      0%   { top: 6px;   opacity: 1; }
-      90%  { top: 258px; opacity: 1; }
-      100% { top: 258px; opacity: 0; }
-    }
-
-    /* ── Status bar (top) ─────────────────────────────── */
-    #status {
-      position: absolute;
-      top: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 500;
-      white-space: nowrap;
-      background: rgba(0, 0, 0, 0.50);
-      padding: 7px 18px;
-      border-radius: 20px;
-      letter-spacing: 0.01em;
-      transition: background 0.25s;
-    }
-    #status.ok { background: rgba(76, 217, 100, 0.70); }
-
-    /* ── Hint text under viewfinder ───────────────────── */
-    #hint {
-      position: absolute;
-      top: calc(50% + 155px);
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.65);
-      font-size: 13px;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    /* ── Zoom control (bottom) ────────────────────────── */
-    #zoom-bar {
-      position: absolute;
-      bottom: 48px;
-      left: 28px;
-      right: 28px;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 14px;
-    }
-
-    #zoom-icon {
-      color: rgba(255,255,255,0.8);
-      font-size: 18px;
-      user-select: none;
-      flex-shrink: 0;
-      width: 20px;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
       text-align: center;
     }
-
-    #zoom-slider {
-      flex: 1;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    }
-    #zoom-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.4);
-      cursor: pointer;
-    }
-    #zoom-slider::-moz-range-thumb {
-      width: 24px;
-      height: 24px;
+    .btn {
+      background-color: var(--tg-theme-button-color, #3390ec);
+      color: var(--tg-theme-button-text-color, #ffffff);
       border: none;
-      border-radius: 50%;
-      background: #fff;
+      border-radius: 12px;
+      padding: 16px 32px;
+      font-size: 18px;
+      font-weight: 600;
       cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-
-    #zoom-value {
-      color: #fff;
-      font-size: 13px;
-      font-weight: 500;
-      min-width: 34px;
-      text-align: right;
-      flex-shrink: 0;
+    .btn:active {
+      transform: scale(0.96);
     }
-
-    /* ── Success flash overlay ────────────────────────── */
-    #flash {
-      position: absolute;
-      inset: 0;
-      background: rgba(76, 217, 100, 0.28);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s;
-    }
-    #flash.show { opacity: 1; }
+    p { margin-bottom: 30px; opacity: 0.8; }
   </style>
 </head>
 <body>
 
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas"></canvas>
-
-  <!-- Masks -->
-  <div class="mask mask-top"></div>
-  <div class="mask mask-bottom"></div>
-  <div class="mask mask-left"></div>
-  <div class="mask mask-right"></div>
-
-  <!-- Viewfinder -->
-  <div id="viewfinder">
-    <div class="c c-tl"></div>
-    <div class="c c-tr"></div>
-    <div class="c c-bl"></div>
-    <div class="c c-br"></div>
-    <div id="scan-line"></div>
-  </div>
-
-  <!-- UI elements -->
-  <div id="status">Scanning...</div>
-  <div id="hint">Point the camera at the QR code</div>
-
-  <div id="zoom-bar">
-    <span id="zoom-icon">&#x1F50D;</span>
-    <input type="range" id="zoom-slider" min="10" max="40" step="1" value="10">
-    <span id="zoom-value">1.0×</span>
-  </div>
-
-  <div id="flash"></div>
+  <h2>HeRo Attendance</h2>
+  <p>If the camera didn't open automatically,<br>tap the button below.</p>
+  
+  <button class="btn" onclick="openNativeScanner()">📷 Open Scanner</button>
 
   <script>
-    // ── Telegram Web App init ──────────────────────────────────────────────────
+    // Initialize Telegram
     const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();   // force full-screen
+    tg.expand();
 
-    // ── DOM refs ───────────────────────────────────────────────────────────────
-    const video      = document.getElementById('video');
-    const canvas     = document.getElementById('canvas');
-    const ctx        = canvas.getContext('2d', { willReadFrequently: true });
-    const statusEl   = document.getElementById('status');
-    const hintEl     = document.getElementById('hint');
-    const viewfinder = document.getElementById('viewfinder');
-    const flash      = document.getElementById('flash');
-    const slider     = document.getElementById('zoom-slider');
-    const zoomValue  = document.getElementById('zoom-value');
-
-    // ── State ──────────────────────────────────────────────────────────────────
-    let videoTrack        = null;
-    let hardwareZoom      = false;
-    let minHwZoom         = 1;
-    let maxHwZoom         = 1;
-    let currentZoom       = 1.0;   // logical zoom multiplier (1.0 = no zoom)
-    let scanning          = true;
-    let frameId           = null;
-
-    // ── Camera start ──────────────────────────────────────────────────────────
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },  // back camera
-            width:  { ideal: 1280 },
-            height: { ideal: 720  }
-          }
-        });
-
-        video.srcObject = stream;
-        videoTrack = stream.getVideoTracks()[0];
-
-        // Check for hardware zoom capability
-        const caps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-        if (caps.zoom && caps.zoom.max > 1) {
-          hardwareZoom = true;
-          minHwZoom    = caps.zoom.min || 1;
-          maxHwZoom    = Math.min(caps.zoom.max, 5);
-          // Map slider range to hardware zoom range
-          slider.min   = Math.round(minHwZoom * 10);
-          slider.max   = Math.round(maxHwZoom * 10);
-          slider.value = Math.round(minHwZoom * 10);
-        }
-
-        await video.play();
-        frameId = requestAnimationFrame(scanLoop);
-
-      } catch (err) {
-        statusEl.textContent = 'Camera access denied';
-        hintEl.textContent   = 'Please allow camera permission and refresh';
-        console.error('Camera error:', err);
-      }
+    function openNativeScanner() {
+      // This tells Telegram to use the phone's native hardware camera
+      tg.showScanQrPopup({ 
+        text: "Point at the HeRo Attendance QR Code" 
+      }, function(qrText) {
+        // When a QR is found, send the text back to your Python bot
+        tg.sendData(qrText);
+      });
     }
 
-    // ── Zoom application ──────────────────────────────────────────────────────
-    function applyZoom(sliderVal) {
-      // sliderVal is slider.value (integer, 10–40 for 1.0×–4.0×)
-      currentZoom = sliderVal / 10;
-      zoomValue.textContent = currentZoom.toFixed(1) + '×';
-
-      if (hardwareZoom && videoTrack) {
-        // Use real optical/digital zoom if device supports it
-        videoTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] })
-          .catch(() => {});  // silently fall back to canvas crop
-      }
-      // If no hardware zoom, scanLoop handles digital crop automatically
-    }
-
-    slider.addEventListener('input', () => applyZoom(parseInt(slider.value)));
-
-    // ── QR scan loop ──────────────────────────────────────────────────────────
-    function scanLoop() {
-      if (!scanning) return;
-
-      if (video.readyState >= video.HAVE_ENOUGH_DATA) {
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-
-        if (!vw || !vh) {
-          frameId = requestAnimationFrame(scanLoop);
-          return;
-        }
-
-        canvas.width  = vw;
-        canvas.height = vh;
-
-        if (!hardwareZoom && currentZoom > 1.05) {
-          // Digital zoom: draw a cropped center region stretched to full canvas
-          const sw = vw / currentZoom;
-          const sh = vh / currentZoom;
-          const sx = (vw - sw) / 2;
-          const sy = (vh - sh) / 2;
-          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, vw, vh);
-        } else {
-          ctx.drawImage(video, 0, 0, vw, vh);
-        }
-
-        // Only analyse the center square (matches viewfinder)
-        const size = Math.round(Math.min(vw, vh) * 0.72);
-        const rx   = Math.round((vw - size) / 2);
-        const ry   = Math.round((vh - size) / 2);
-
-        let imageData;
-        try {
-          imageData = ctx.getImageData(rx, ry, size, size);
-        } catch (_) {
-          frameId = requestAnimationFrame(scanLoop);
-          return;
-        }
-
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert'
-        });
-
-        if (code && code.data && code.data.length > 0) {
-          onDetected(code.data);
-          return;  // stop loop — we're done
-        }
-      }
-
-      frameId = requestAnimationFrame(scanLoop);
-    }
-
-    // ── QR detected ──────────────────────────────────────────────────────────
-    function onDetected(data) {
-      scanning = false;
-      cancelAnimationFrame(frameId);
-
-      // Visual feedback
-      viewfinder.classList.add('detected');
-      flash.classList.add('show');
-      document.getElementById('scan-line').style.display = 'none';
-      statusEl.textContent = 'QR found! Marking attendance...';
-      statusEl.classList.add('ok');
-      hintEl.textContent   = data.length > 60 ? data.slice(0, 57) + '...' : data;
-
-      // Short delay so the user sees the green flash, then send & close
-      setTimeout(() => {
-        tg.sendData(data);   // sends data back to the bot as web_app_data
-        // tg.close() is called automatically after sendData in most clients
-      }, 700);
-    }
-
-    // ── Boot ──────────────────────────────────────────────────────────────────
-    startCamera();
+    // Automatically open the scanner as soon as the Mini App loads
+    setTimeout(openNativeScanner, 300);
   </script>
 </body>
 </html>
